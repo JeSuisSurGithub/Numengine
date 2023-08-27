@@ -18,12 +18,24 @@ typedef struct vertex_
 	u8  b;
 }vertex_;
 
+extern u16 RENDER_WIDTH;
+extern u16 RENDER_HEIGHT;
+extern u16 SCALE_WIDTH;
+extern u16 SCALE_HEIGHT;
+
+// Used for scanline filling
+extern vertex_ rtz_prealloc_longline_buf[401];
+
+// Heap framebuffer
+extern u16* rtz_framebuffer;
+
 void rtz_init(u16 horizontal_downscale, u16 vertical_downscale);
 void rtz_free();
-void rtz_swap_buffers();
-u16 rtz_rgb888_to_rgb565_(u8 red, u8 green, u8 blue);
+void rtz_flush_framebuf();
+
+u16  rtz_rgb888_to_rgb565_(u8 red, u8 green, u8 blue);
 void rtz_put_pixel_(const vertex_* p);
-i16 rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by);
+i16  rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by);
 void rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* line);
 void rtz_scanline_fill_(
 	const vertex_* long_line,

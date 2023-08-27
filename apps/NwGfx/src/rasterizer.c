@@ -1,15 +1,13 @@
 #include "rasterizer.h"
+#include "floatops.h"
+#include "../../../api/extapp_api.h"
 
 u16 RENDER_WIDTH   = LCD_WIDTH;
 u16 RENDER_HEIGHT  = LCD_HEIGHT;
 u16 SCALE_WIDTH    = 1;
 u16 SCALE_HEIGHT   = 1;
-
-// Used for scanline filling
-vertex_ prealloc_longline_buf[401];
-
-// Heap framebuffer
-u16* framebuffer = NULL;
+vertex_ rtz_prealloc_longline_buf[401];
+u16* rtz_framebuffer = NULL;
 
 void rtz_init(u16 horizontal_downscale, u16 vertical_downscale)
 {
@@ -17,24 +15,24 @@ void rtz_init(u16 horizontal_downscale, u16 vertical_downscale)
 	RENDER_HEIGHT = LCD_HEIGHT / vertical_downscale;
 	SCALE_WIDTH  = horizontal_downscale;
 	SCALE_HEIGHT = vertical_downscale;
-	framebuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
+	rtz_framebuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
 }
 
 void rtz_free()
 {
-	free(framebuffer);
+	free(rtz_framebuffer);
 }
 
-void rtz_swap_buffers()
+void rtz_flush_framebuf()
 {
 	extapp_waitForVBlank();
 	for (i16 k = 0; k < RENDER_WIDTH * RENDER_HEIGHT; k++) {
 		extapp_pushRectUniform(
 			(k % RENDER_WIDTH) * SCALE_WIDTH, (k / RENDER_WIDTH) * SCALE_HEIGHT,
 			SCALE_WIDTH, SCALE_HEIGHT,
-			framebuffer[k]);
+			rtz_framebuffer[k]);
 	}
-	memset(framebuffer, 0, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
+	memset(rtz_framebuffer, 0, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
 }
 
 u16 rtz_rgb888_to_rgb565_(u8 red, u8 green, u8 blue)
@@ -51,7 +49,7 @@ void rtz_put_pixel_(const vertex_* p)
 {
 	if (p->x < 0 || p->y < 0 || p->x >= RENDER_WIDTH || p->y >= RENDER_HEIGHT)
 		return;
-	framebuffer[p->y * RENDER_WIDTH + p->x] = rtz_rgb888_to_rgb565_(p->r, p->g, p->b);
+	rtz_framebuffer[p->y * RENDER_WIDTH + p->x] = rtz_rgb888_to_rgb565_(p->r, p->g, p->b);
 }
 
 i16 rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by)
@@ -176,8 +174,8 @@ void rtz_scanline_fill_(
 vertex_ rtz_ndc_to_viewport_(const vertex_ndc* p)
 {
 	vertex_ np = {0};
-	np.x = (p->xyz[0] + 1) / 2 * RENDER_WIDTH;
-	np.y = (p->xyz[1] + 1) / 2 * RENDER_HEIGHT;
+	np.x = (fop_clamp(p->xyz[0], -1.f, +1.f) + 1) / 2 * RENDER_WIDTH;
+	np.y = (fop_clamp(p->xyz[1], -1.f, +1.f) + 1) / 2 * RENDER_HEIGHT;
 	np.r = p->rgb[0] * 255;
 	np.g = p->rgb[1] * 255;
 	np.b = p->rgb[2] * 255;
@@ -240,8 +238,8 @@ void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const
 		}
 
 		long_line_distance = rtz_distance_(p1->x, p2->x, p1->y, p2->y);
-		rtz_draw_line_(p1, p2, prealloc_longline_buf);
-		rtz_scanline_fill_(prealloc_longline_buf, long_line_distance, p1, p3, p3, p2);
+		rtz_draw_line_(p1, p2, rtz_prealloc_longline_buf);
+		rtz_scanline_fill_(rtz_prealloc_longline_buf, long_line_distance, p1, p3, p3, p2);
 	}
 	return;
 }
