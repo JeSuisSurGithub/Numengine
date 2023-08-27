@@ -1,3 +1,4 @@
+apps/NwSh/**
 server.pem
 *.o
 *.tar
