@@ -15,10 +15,10 @@ void  fop_vec3_normalize(vec3 vec);
 
 void  fop_2d_translate(vec2 translation, const vec3 in, vec3 out);
 void  fop_2d_rotation(float rotation, vec2 pivot, const vec3 in, vec3 out);
-void  fop_2d_scale(float scale, const vec3 in, vec3 out);
+void  fop_2d_scale(vec2 scale, const vec3 in, vec3 out);
 
 void  fop_3d_translate(vec3 translation, const vec3 in, vec3 out);
-void  fop_3d_scale(float scale, const vec3 in, vec3 out);
+void  fop_3d_scale(vec3 scale, const vec3 in, vec3 out);
 void  fop_3d_roll_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out);
 void  fop_3d_pitch_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out);
 void  fop_3d_yaw_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out);

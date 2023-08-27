@@ -58,19 +58,19 @@ void fop_2d_translate(vec2 translation, const vec3 in, vec3 out)
 void fop_2d_rotation(float rotation, vec2 pivot, const vec3 in, vec3 out)
 {
 	mat3x3 rmat = {
-		{cos(rotation), -sin(rotation),  pivot[0] * (1 - cos(rotation)) + pivot[1] * (sin(rotation))},
-		{sin(rotation), cos(rotation), pivot[1] * (1 - cos(rotation)) - pivot[0] * (sin(rotation))},
+		{cosf(rotation), -sinf(rotation),  pivot[0] * (1 - cosf(rotation)) + pivot[1] * (sinf(rotation))},
+		{sinf(rotation), cosf(rotation), pivot[1] * (1 - cosf(rotation)) - pivot[0] * (sinf(rotation))},
 		{0, 0, 1},
 	};
 	fop_mat3x3_vec3_(rmat, in, out);
 	return;
 }
 
-void fop_2d_scale(float scale, const vec3 in, vec3 out)
+void fop_2d_scale(vec2 scale, const vec3 in, vec3 out)
 {
 	mat3x3 smat = {
-		{scale, 0, 0},
-		{0, scale, 0},
+		{scale[0], 0, 0},
+		{0, scale[1], 0},
 		{0, 0, 1},
 	};
 	fop_mat3x3_vec3_(smat, in, out);
@@ -94,12 +94,12 @@ void fop_3d_translate(vec3 translation, const vec3 in, vec3 out)
 	return;
 }
 
-void fop_3d_scale(float scale, const vec3 in, vec3 out)
+void fop_3d_scale(vec3 scale, const vec3 in, vec3 out)
 {
 	mat4x4 tmat = {
-		{scale, 0, 0, 0},
-		{0, scale, 0, 0},
-		{0, 0, scale, 0},
+		{scale[0], 0, 0, 0},
+		{0, scale[1], 0, 0},
+		{0, 0, scale[2], 0},
 		{0, 0, 0, 1},
 	};
 	vec4 in4 = {in[0], in[1], in[2], 1};
@@ -115,8 +115,8 @@ void  fop_3d_roll_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out)
 {
 	fop_3d_translate((vec3){-pivot[0], -pivot[1], -pivot[2]}, in, out);
 	mat4x4 rmat = {
-		{cos(rotation), -sin(rotation), 0, 0},
-		{sin(rotation), cos(rotation), 0, 0},
+		{cosf(rotation), -sinf(rotation), 0, 0},
+		{sinf(rotation), cosf(rotation), 0, 0},
 		{0, 0, 1, 0},
 		{0, 0, 0, 1},
 	};
@@ -135,8 +135,8 @@ void  fop_3d_pitch_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out)
 	fop_3d_translate((vec3){-pivot[0], -pivot[1], -pivot[2]}, in, out);
 	mat4x4 rmat = {
 		{1, 0, 0, 0},
-		{0, cos(rotation), -sin(rotation), 0},
-		{0, sin(rotation), cos(rotation), 0},
+		{0, cosf(rotation), -sinf(rotation), 0},
+		{0, sinf(rotation), cosf(rotation), 0},
 		{0, 0, 0, 1},
 	};
 	vec4 in4 = {in[0], in[1], in[2], 1};
@@ -153,9 +153,9 @@ void  fop_3d_yaw_rotation(float rotation, vec3 pivot, const vec3 in, vec3 out)
 {
 	fop_3d_translate((vec3){-pivot[0], -pivot[1], -pivot[2]}, in, out);
 	mat4x4 rmat = {
-		{cos(rotation), 0, sin(rotation), 0},
+		{cosf(rotation), 0, sinf(rotation), 0},
 		{0, 1, 0, 0},
-		{-sin(rotation), 0, cos(rotation), 0},
+		{-sinf(rotation), 0, cosf(rotation), 0},
 		{0, 0, 0, 1},
 	};
 	vec4 in4 = {in[0], in[1], in[2], 1};

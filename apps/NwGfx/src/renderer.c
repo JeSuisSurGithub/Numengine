@@ -29,6 +29,7 @@ void rdr_projection_mat_(mat4x4 out, float znear, float zfar, float fov_degree, 
 
 bool rdr_is_cullable_(const vec3 camera, const vec3 va, const vec3 vb, const vec3 vc)
 {
+	return false;
 	vec3 v_ab = {0};
 	vec3 v_ac = {0};
 	vec3 v_normal = {0};
