@@ -13,6 +13,7 @@ typedef struct vertex_
 {
 	i16 x;
 	i16 y;
+	i16 z;
 	u8  r;
 	u8  g;
 	u8  b;
@@ -23,11 +24,9 @@ extern u16 RENDER_HEIGHT;
 extern u16 SCALE_WIDTH;
 extern u16 SCALE_HEIGHT;
 
-// Used for scanline filling
-extern vertex_ rtz_prealloc_longline_buf[401];
-
-// Heap framebuffer
+// Heap framebuffer and depthbuffer
 extern u16* rtz_framebuffer;
+extern i16* rtz_depthbuffer;
 
 void rtz_init(u16 horizontal_downscale, u16 vertical_downscale);
 void rtz_free();
