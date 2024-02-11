@@ -8,7 +8,7 @@ LDFLAGS=-Wl,-L$(API) -Wl,--gc-sections -Wl,--entry=entrypoint --specs=nosys.spec
 %.o: src/%.c
 	$(CC) $(CFLAGS) -c $<
 
-app.elf: main.o controls.o floatops.o rasterizer.o renderer.o
+app.elf: main.o commons.o controls.o floatops.o rasterizer.o renderer.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 clean:
