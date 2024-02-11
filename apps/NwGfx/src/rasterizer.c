@@ -1,5 +1,6 @@
 #include "rasterizer.h"
 #include "floatops.h"
+
 #include "../../../api/extapp_api.h"
 
 u16 RENDER_WIDTH   = LCD_WIDTH;
@@ -210,11 +211,10 @@ bool rtz_comp_point_(const vertex_ndc* left, const vertex_ndc* right) {
 
 void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const vertex_ndc* pc_ndc, bool wireframe)
 {
+	// Skip useless
 	if (rtz_comp_point_(pa_ndc, pb_ndc) || rtz_comp_point_(pb_ndc, pc_ndc) || rtz_comp_point_(pc_ndc, pa_ndc)) {
 		return;
 	}
-
-	// Temporary
 	if (pa_ndc->xyz[0] <= -1.f || pa_ndc->xyz[0] >= 1.f || pa_ndc->xyz[1] <= -1.f || pa_ndc->xyz[1] >= 1.f) {
 		return;
 	}

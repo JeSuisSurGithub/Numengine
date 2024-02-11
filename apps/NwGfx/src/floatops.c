@@ -9,17 +9,19 @@ float fop_clamp(float f, float min, float max) {
 	return fminf(fmaxf(f, min), max);
 }
 
+/*
 void fop_mat3x3_vec3(const mat3x3 mat, const vec3 in, vec3 out) {
 	out[0] = (mat[0][0]) * in[0] + (mat[0][1]) * in[1] + (mat[0][2]) * in[2];
 	out[1] = (mat[1][0]) * in[0] + (mat[1][1]) * in[1] + (mat[1][2]) * in[2];
 	out[2] = (mat[2][0]) * in[0] + (mat[2][1]) * in[1] + (mat[2][2]) * in[2];
 	return;
 }
+*/
 void fop_mat4x4_vec4(const mat4x4 mat, const vec4 in, vec4 out) {
 	out[0]  = (mat[0][0]) * in[0] + (mat[0][1]) * in[1] + (mat[0][2]) * in[2] + (mat[0][3]) * in[3];
 	out[1]  = (mat[1][0]) * in[0] + (mat[1][1]) * in[1] + (mat[1][2]) * in[2] + (mat[1][3]) * in[3];
 	out[2]  = (mat[2][0]) * in[0] + (mat[2][1]) * in[1] + (mat[2][2]) * in[2] + (mat[2][3]) * in[3];
-	out[3]  = (mat[3][0]) * in[0] + (mat[3][1]) * in[1] + (mat[3][2]) * in[2] + (mat[2][3]) * in[3];
+	out[3]  = (mat[3][0]) * in[0] + (mat[3][1]) * in[1] + (mat[3][2]) * in[2] + (mat[3][3]) * in[3];
 	return;
 }
 
@@ -91,7 +93,7 @@ void fop_vec3_normalize(vec3 vec) {
 	}
 	return;
 }
-
+/*
 void fop_2d_translate(vec2 translation, const vec3 in, vec3 out)
 {
 	mat3x3 tmat = {
@@ -124,6 +126,7 @@ void fop_2d_scale(vec2 scale, const vec3 in, vec3 out)
 	fop_mat3x3_vec3(smat, in, out);
 	return;
 }
+*/
 
 void fop_3d_translate(const vec3 translation, const vec3 in, vec3 out)
 {
@@ -133,7 +136,7 @@ void fop_3d_translate(const vec3 translation, const vec3 in, vec3 out)
 		{0, 0, 1, translation[2]},
 		{0, 0, 0, 1},
 	};
-	vec4 in4 = {in[0], in[1], in[2], 1};
+	vec4 in4 = {in[0], in[1], in[2], 1.f};
 	vec4 out4 = {0};
 	fop_mat4x4_vec4(tmat, in4, out4);
 	out[0] = out4[0];
@@ -168,13 +171,13 @@ void fop_3d_roll_rotation(float rotation, const vec3 pivot, const vec3 in, vec3 
 		{0, 0, 1, 0},
 		{0, 0, 0, 1},
 	};
-	vec4 in4 = {in[0], in[1], in[2], 1};
+	vec4 in4 = {out[0], out[1], out[2], 1};
 	vec4 out4 = {0};
 	fop_mat4x4_vec4(rmat, in4, out4);
 	out[0] = out4[0];
 	out[1] = out4[1];
 	out[2] = out4[2];
-	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, in, out);
+	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, out, out);
 	return;
 }
 
@@ -187,13 +190,13 @@ void fop_3d_pitch_rotation(float rotation, const vec3 pivot, const vec3 in, vec3
 		{0, sinf(rotation), cosf(rotation), 0},
 		{0, 0, 0, 1},
 	};
-	vec4 in4 = {in[0], in[1], in[2], 1};
+	vec4 in4 = {out[0], out[1], out[2], 1};
 	vec4 out4 = {0};
 	fop_mat4x4_vec4(rmat, in4, out4);
 	out[0] = out4[0];
 	out[1] = out4[1];
 	out[2] = out4[2];
-	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, in, out);
+	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, out, out);
 	return;
 }
 
@@ -206,12 +209,12 @@ void fop_3d_yaw_rotation(float rotation, const vec3 pivot, const vec3 in, vec3 o
 		{-sinf(rotation), 0, cosf(rotation), 0},
 		{0, 0, 0, 1},
 	};
-	vec4 in4 = {in[0], in[1], in[2], 1};
+	vec4 in4 = {out[0], out[1], out[2], 1};
 	vec4 out4 = {0};
 	fop_mat4x4_vec4(rmat, in4, out4);
 	out[0] = out4[0];
 	out[1] = out4[1];
 	out[2] = out4[2];
-	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, in, out);
+	fop_3d_translate((vec3){pivot[0], pivot[1], pivot[2]}, out, out);
 	return;
 }

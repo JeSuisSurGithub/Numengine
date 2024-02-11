@@ -46,6 +46,10 @@ void rtz_scanline_fill_(
 );
 vertex_ rtz_ndc_to_viewport_(const vertex_ndc* p);
 bool rtz_comp_point_(const vertex_ndc* left, const vertex_ndc* right);
-void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const vertex_ndc* pc_ndc, bool wireframe);
+void rtz_draw_triangle(
+	const vertex_ndc* pa_ndc,
+	const vertex_ndc* pb_ndc,
+	const vertex_ndc* pc_ndc,
+	bool wireframe);
 
 #endif /* RASTERIZER_H */

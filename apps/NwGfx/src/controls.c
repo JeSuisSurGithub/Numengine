@@ -1,4 +1,5 @@
 #include "controls.h"
+
 #include "../../../api/extapp_api.h"
 
 void ctrl_wait_for_key_pressed()
