@@ -1,3 +1,8 @@
+# NwGfx
+
+A Work in progress 3D rasterizer and engine written in C.
+
+# Original README
 # Epsilon
 
 The base firmware image is a fork of https://github.com/numworks/epsilon including
