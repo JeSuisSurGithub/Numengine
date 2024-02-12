@@ -96,16 +96,16 @@ void fop_vec3_normalize(vec3 vec) {
 
 void fop_forward(const float pitch, const float yaw, vec3 out)
 {
-    out[0] = cosf(pitch) * sinf(-yaw);
+    out[0] = cosf(pitch) * sinf(yaw);
     out[1] = sinf(pitch);
     out[2] = cosf(pitch) * cosf(yaw);
 }
 
 void fop_right(const float yaw, vec3 out)
 {
-	out[0] = -cosf(yaw);
+	out[0] = sinf(yaw - (PI / 2));
 	out[1] = 0.f;
-	out[2] = sinf(-yaw);
+	out[2] = cosf(yaw - (PI / 2));
 }
 
 /*

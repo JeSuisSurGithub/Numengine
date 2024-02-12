@@ -59,7 +59,7 @@ int main(void)
 
 	u64 kb = ntf_kb_scan();
 
-	camera cam = { {0.f, 0.f, 0.f}, 75.f, PI, 0.f };
+	camera cam = { {0.f, 0.f, 0.f}, 75.f, 0.f, 0.f };
 
 	// In number of frames, 3 * 32ms = ~100ms
 	i16 cooldown_max = 3;
@@ -97,11 +97,11 @@ int main(void)
 		if (kb & CAMERA_RIGHT) {
 			cam.yaw += PI / 180.f;
 		}
-		if (kb & CAMERA_DOWN) {
-			cam.pitch -= PI / 180.f;
-		}
 		if (kb & CAMERA_UP) {
 			cam.pitch += PI / 180.f;
+		}
+		if (kb & CAMERA_DOWN) {
+			cam.pitch -= PI / 180.f;
 		}
 
 		vec3 forward = {0};
@@ -125,12 +125,12 @@ int main(void)
 		}
 		if (kb & XYZ_RIGHT) {
 			vec3 movement = {0};
-			fop_vec3_mulf(right, .5f, movement);
+			fop_vec3_mulf(right, -.5f, movement);
 			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
 		}
 		if (kb & XYZ_LEFT) {
 			vec3 movement = {0};
-			fop_vec3_mulf(right, -.5f, movement);
+			fop_vec3_mulf(right, .5f, movement);
 			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
 		}
 
@@ -167,8 +167,8 @@ int main(void)
 
 			fop_3d_translate(
 				(vec3){
-					0.f,
-					-1.f,
+					.5f,
+					-.5f,
 					20.f,
 				},
 				mesh1.vertices[k].xyz,
@@ -176,8 +176,8 @@ int main(void)
 
 			fop_3d_translate(
 				(vec3){
-					0.f,
-					1.f,
+					-.5f,
+					.5f,
 					-20.f,
 				},
 				mesh2.vertices[k].xyz,

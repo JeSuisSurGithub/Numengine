@@ -33,16 +33,8 @@ void rdr_projection_mat_(mat4x4 out, float znear, float zfar, float fov_degree, 
 	return;
 }
 
-void rdr_viewfrom_(const camera* cam, const vec3 in, vec3 out)
+void rdr_viewfrom_(const mat4x4 mat, const vec3 in, vec3 out)
 {
-	vec3 translation = {0};
-	fop_vec3_mulf(cam->xyz, -1.f, translation);
-
-	fop_3d_yaw_rotation(cam->yaw, cam->xyz, in, out);
-	fop_3d_pitch_rotation(cam->pitch, cam->xyz, out, out);
-	fop_3d_translate(translation, out, out);
-	return;
-/*
 	vec4 in4 = {in[0], in[1], in[2], 1.f};
 	vec4 out4 = {0};
 	fop_mat4x4_vec4(mat, in4, out4);
@@ -50,36 +42,30 @@ void rdr_viewfrom_(const camera* cam, const vec3 in, vec3 out)
 	out[1] = out4[1];
 	out[2] = out4[2];
 	return;
-*/
 }
-/*
-void rdr_camera_mat_(const camera* cam, mat4x4 out) {
-	vec3 forward = {
-		cosf(cam->pitch) * cosf(cam->yaw),
-		sinf(cam->pitch),
-		cosf(cam->pitch) * sinf(cam->yaw)};
 
-	vec3 right = {
-		sinf(cam->yaw - PI / 2.f),
-		0,
-		cosf(cam->yaw - PI / 2.f)};
+void rdr_camera_mat_(const camera* cam, mat4x4 out) {
+	vec3 forward = {0};
+	vec3 right = {0};
+	fop_forward(cam->pitch, cam->yaw, forward);
+	fop_right(cam->yaw, right);
 
 	fop_vec3_normalize(forward);
 	fop_vec3_normalize(right);
 
 	vec3 up = {0};
-	fop_vec3_cross(forward, right, up);
+	fop_vec3_cross(right, forward, up);
 	fop_vec3_normalize(up);
 
 	memcpy(out, (mat4x4){
-		{right[0], up[0], -forward[0], cam->xyz[0]},
-		{right[1], up[1], -forward[1], cam->xyz[1]},
-		{right[2], up[2], -forward[2], cam->xyz[2]},
+		{right[0], right[1], right[2], -fop_vec3_dot(right, cam->xyz)},
+		{up[0], up[1], up[2], -fop_vec3_dot(up, cam->xyz)},
+		{forward[0], forward[1], forward[2], -fop_vec3_dot(forward, cam->xyz)},
 		{0.f, 0.f, 0.f, 1.f}
 	}, sizeof(float) * 4 * 4);
 	return;
 }
-*/
+
 bool rdr_is_cullable_(const vec3 forward, const vec3 va, const vec3 vb, const vec3 vc)
 {
 	vec3 v_ab = {0};
@@ -122,8 +108,8 @@ void rdr_render_mesh(mesh_ndc* mesh, const camera* cam, vec3 forward)
 	mat4x4 projection = {0};
 	rdr_projection_mat_(projection, .1f, 1e+6f, cam->fov, 4.f / 3.f);
 
-	//mat4x4 view = {0};
-	//rdr_camera_mat_(cam, view);
+	mat4x4 view = {0};
+	rdr_camera_mat_(cam, view);
 
 	u8 already_projected[256] = {0};
 
@@ -142,7 +128,7 @@ void rdr_render_mesh(mesh_ndc* mesh, const camera* cam, vec3 forward)
 		{
 			for (u64 i = 0; i < 3; i++) {
 				if (!already_projected[indices[k + i]]) {
-					rdr_viewfrom_(cam,
+					rdr_viewfrom_(view,
 						projected_mesh.vertices[indices[k + i]].xyz,
 						projected_mesh.vertices[indices[k + i]].xyz);
 					rdr_project_(projection,
