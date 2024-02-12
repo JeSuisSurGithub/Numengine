@@ -18,6 +18,9 @@ float fop_vec3_dot(const vec3 v1, const vec3 v2);
 float fop_vec3_len(const vec3 vec);
 void  fop_vec3_normalize(vec3 vec);
 
+void fop_forward(const float pitch, const float yaw, vec3 out);
+void fop_right(const float yaw, vec3 out);
+
 /*
 void  fop_2d_translate(vec2 translation, const vec3 in, vec3 out);
 void  fop_2d_rotation(float rotation, vec2 pivot, const vec3 in, vec3 out);

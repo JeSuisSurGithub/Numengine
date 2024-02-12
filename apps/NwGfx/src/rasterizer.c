@@ -1,7 +1,6 @@
 #include "rasterizer.h"
 #include "floatops.h"
-
-#include "../../../api/extapp_api.h"
+#include "interface.h"
 
 u16 RENDER_WIDTH   = LCD_WIDTH;
 u16 RENDER_HEIGHT  = LCD_HEIGHT;
@@ -32,9 +31,8 @@ void rtz_free()
 
 void rtz_flush_framebuf()
 {
-	extapp_waitForVBlank();
 	for (i16 k = 0; k < RENDER_WIDTH * RENDER_HEIGHT; k++) {
-		extapp_pushRectUniform(
+		ntf_draw_rect(
 			(k % RENDER_WIDTH) * SCALE_WIDTH, (k / RENDER_WIDTH) * SCALE_HEIGHT,
 			SCALE_WIDTH, SCALE_HEIGHT,
 			rtz_framebuffer[k]);

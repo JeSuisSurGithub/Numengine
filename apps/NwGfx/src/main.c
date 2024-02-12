@@ -1,25 +1,9 @@
 #include "commons.h"
-#include "controls.h"
+#include "interface.h"
 #include "floatops.h"
 #include "renderer.h"
 
-#include "../../../api/extapp_api.h"
-
 #include <stdio.h>
-
-typedef enum CONTROLS {
-	CAMERA_UP    = SCANCODE_Toolbox,
-	CAMERA_DOWN  = SCANCODE_Sqrt,
-	CAMERA_LEFT  = SCANCODE_Imaginary,
-	CAMERA_RIGHT = SCANCODE_Power,
-	XYZ_FORWARD  = SCANCODE_Up,
-	XYZ_BACK     = SCANCODE_Down,
-	XYZ_LEFT     = SCANCODE_Left,
-	XYZ_RIGHT    = SCANCODE_Right,
-	FOV_MORE     = SCANCODE_Alpha,
-	FOV_LESS     = SCANCODE_Cosine,
-	WIREFRAME    = SCANCODE_Shift,
-}CONTROLS;
 
 void compute_centroid(const mesh_ndc* mesh, vec3 out)
 {
@@ -35,9 +19,9 @@ void compute_centroid(const mesh_ndc* mesh, vec3 out)
 	return;
 }
 
-void extapp_main(void)
+int main(void)
 {
-    ctrl_wait_for_key_released();
+    ntf_wait_for_key_released();
 
 	// 80x60 Framebuffer
 	rtz_init(4, 4);
@@ -73,7 +57,7 @@ void extapp_main(void)
 	mesh_ndc mesh1 = rdr_clone_mesh(&model);
 	mesh_ndc mesh2 = rdr_clone_mesh(&model);
 
-	u64 kb = ctrl_kb_scan();
+	u64 kb = ntf_kb_scan();
 
 	camera cam = { {0.f, 0.f, 0.f}, 75.f, PI, 0.f };
 
@@ -84,9 +68,9 @@ void extapp_main(void)
 	// Overlay
 	char overlay[128] = {0};
 
-	while (!((kb = ctrl_kb_scan()) & SCANCODE_Home))
+	while (!((kb = ntf_kb_scan()) & SCANCODE_Home))
 	{
-		uint64_t start = extapp_millis();
+		uint64_t start = ntf_clock_ms();
 
 		// FoV
 		if (kb & FOV_MORE) {
@@ -120,16 +104,10 @@ void extapp_main(void)
 			cam.pitch += PI / 180.f;
 		}
 
-		vec3 forward = {
-            cosf(cam.pitch) * sinf(-cam.yaw),
-            sinf(cam.pitch),
-            cosf(cam.pitch) * cosf(cam.yaw)};
-
-        vec3 right = {
-            -cosf(cam.yaw),
-            0.f,
-            sinf(-cam.yaw),
-		};
+		vec3 forward = {0};
+		vec3 right = {0};
+		fop_forward(cam.pitch, cam.yaw, forward);
+		fop_right(cam.yaw, right);
 
 		fop_vec3_normalize(forward);
 		fop_vec3_normalize(right);
@@ -219,18 +197,18 @@ void extapp_main(void)
 		frame++;
 
 		// Debugging
-		sprintf(overlay, "FWR %.2f %.2f %.2f\nRGT %.2f %.2f %.2f\nXYZ %.2f %.2f %.2f\nPITCH / YAW %.2f %.2f\nFOV %.2f",
-			forward[0], forward[1], forward[2],
-			right[0]  , right[1]  , right[2]  ,
+		i16 delta_time = ntf_clock_ms() - start;
+		sprintf(overlay, "RENDER TIME %ims\nXYZ %.2f %.2f %.2f\nPITCH / YAW %.2f %.2f\nFOV %.2f",
+			delta_time,
 			cam.xyz[0], cam.xyz[1], cam.xyz[2],
 			cam.pitch, cam.yaw,
 			cam.fov);
 
 		write_log(overlay);
-		extapp_drawTextSmall(read_log(), 0, 0, 0xFFFF, 0x0000, 0);
+		ntf_print_text(read_log(), 0, 0);
 		reset_log();
 
-		while (extapp_millis() - start < 33);
+		while (ntf_clock_ms() - start < 32);
 	}
 
 	// Cleanup
@@ -238,5 +216,6 @@ void extapp_main(void)
 	rdr_free_mesh(mesh2);
 	rdr_free_mesh(model);
 	rtz_free();
-	return;
+	return 0;
 }
+
