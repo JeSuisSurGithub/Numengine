@@ -17,6 +17,7 @@ typedef enum CONTROLS {
 	FOV_MORE     = SCANCODE_Alpha,
 	FOV_LESS     = SCANCODE_Cosine,
 	WIREFRAME    = SCANCODE_Shift,
+	FREEZE       = SCANCODE_Sine,
 }CONTROLS;
 
 void ntf_wait_for_key_pressed();

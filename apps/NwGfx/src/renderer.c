@@ -5,7 +5,7 @@
 bool WIREFRAME = false;
 
 void rdr_toggle_wireframe() {
-	WIREFRAME = (WIREFRAME == true) ? false : true;
+	WIREFRAME = !WIREFRAME;
 }
 
 void rdr_project_(const mat4x4 mat, const vec3 in, vec3 out)

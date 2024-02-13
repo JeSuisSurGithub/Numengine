@@ -35,14 +35,14 @@ void rtz_flush_framebuf();
 u16  rtz_rgb888_to_rgb565_(u8 red, u8 green, u8 blue);
 void rtz_put_pixel_(const vertex_* p);
 i16  rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by);
-void rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* line);
+u16 rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* vertex_line_cache);
 void rtz_scanline_fill_(
 	const vertex_* long_line,
-	u16 long_line_distance,
-	const vertex_* line1_vertex1,
-	const vertex_* line1_vertex2,
-	const vertex_* line2_vertex1,
-	const vertex_* line2_vertex2
+	u16 long_line_len,
+	const vertex_* line1_p1,
+	const vertex_* line1_p2,
+	const vertex_* line2_p1,
+	const vertex_* line2_p2
 );
 vertex_ rtz_ndc_to_viewport_(const vertex_ndc* p);
 bool rtz_comp_point_(const vertex_ndc* left, const vertex_ndc* right);

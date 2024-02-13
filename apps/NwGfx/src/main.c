@@ -26,8 +26,9 @@ int main(void)
 	// 80x60 Framebuffer
 	rtz_init(4, 4);
 
-	// Track frames
-	u32 frame = 0;
+	// Movement
+	bool tick_freeze = false;
+	u32 tick = 0;
 
 	// Cube
 	mesh_ndc model = rdr_init_mesh(8, 36);
@@ -90,6 +91,16 @@ int main(void)
 			}
 		}
 
+		// Freeze
+		if (kb & FREEZE) {
+			if (cooldown > 0) {
+				--cooldown;
+			} else {
+				cooldown = cooldown_max;
+				tick_freeze = !tick_freeze;
+			}
+		}
+
 		// Camera rotation
 		if (kb & CAMERA_LEFT) {
 			cam.yaw -= PI / 180.f;
@@ -135,6 +146,8 @@ int main(void)
 		}
 
 		// Update
+		if (!tick_freeze) ++tick;
+
 		for (i16 k = 0; k < model.n_vertices; k++)
 		{
 			vec3 mesh1_centroid = {0};
@@ -155,12 +168,12 @@ int main(void)
 				mesh2.vertices[k].xyz);
 
 			fop_3d_yaw_rotation(
-				fop_deg2rad(frame % 360) * 6.f,
+				fop_deg2rad(tick % 360) * 6.f,
 				mesh1_centroid,
 				mesh1.vertices[k].xyz,
 				mesh1.vertices[k].xyz);
 			fop_3d_yaw_rotation(
-				fop_deg2rad(frame % 360) * -6.f,
+				fop_deg2rad(tick % 360) * -6.f,
 				mesh2_centroid,
 				mesh2.vertices[k].xyz,
 				mesh2.vertices[k].xyz);
@@ -194,7 +207,6 @@ int main(void)
 
 		// Swap framebuffers
 		rtz_flush_framebuf();
-		frame++;
 
 		// Debugging
 		i16 delta_time = ntf_clock_ms() - start;

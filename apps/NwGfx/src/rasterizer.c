@@ -66,30 +66,30 @@ void rtz_put_pixel_(const vertex_* p)
 
 i16 rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by)
 {
-	return sqrtf(powf(ax - bx, 2) + powf(ay - by, 2));
+	return roundf(sqrtf(powf(ax - bx, 2) + powf(ay - by, 2)));
 }
 
-void rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* line)
+u16 rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* vertex_line_cache)
 {
-	vertex_* iter = line;
+	vertex_* iter = vertex_line_cache;
 	u16 steps = rtz_distance_(pa->x, pb->x, pa->y, pb->y);
 	if (steps == 0) {
 		rtz_put_pixel_(pa);
-		if (line != NULL) { *iter++ = *pa; }
-		return;
+		if (vertex_line_cache != NULL) { *iter++ = *pa; }
+		return (iter - vertex_line_cache);
 	}
 	if (steps == 1) {
 		rtz_put_pixel_(pa);
 		rtz_put_pixel_(pb);
-		if (line != NULL) {
+		if (vertex_line_cache != NULL) {
 			*iter++ = *pa;
 			*iter++ = *pb;
 		}
-		return;
+		return (iter - vertex_line_cache);
 	}
 
-	i16 v_diff = pb->x - pa->x;
-	i16 h_diff = pb->y - pa->y;
+	i16 x_diff = pb->x - pa->x;
+	i16 y_diff = pb->y - pa->y;
 	i16 z_diff = pb->z - pa->z;
 	i16 r_diff = pb->r - pa->r;
 	i16 g_diff = pb->g - pa->g;
@@ -98,96 +98,79 @@ void rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* line)
 	vertex_ pk = {0};
 	for (i16 k = 0; k <= steps; k++)
 	{
-		pk.x = (i16)(pa->x + ((float)(v_diff * k) / steps));
-		pk.y = (i16)(pa->y + ((float)(h_diff * k) / steps));
-		pk.z = (i16)(pa->z + ((float)(z_diff * k) / steps));
-		pk.r =  (u8)(pa->r + ((float)(r_diff * k) / steps));
-		pk.g =  (u8)(pa->g + ((float)(g_diff * k) / steps));
-		pk.b =  (u8)(pa->b + ((float)(b_diff * k) / steps));
+		float part = (float)k / steps;
+		pk.x = (i16)(pa->x + (x_diff * part));
+		pk.y = (i16)(pa->y + (y_diff * part));
+		pk.z = (i16)(pa->z + (z_diff * part));
+		pk.r =  (u8)(pa->r + (r_diff * part));
+		pk.g =  (u8)(pa->g + (g_diff * part));
+		pk.b =  (u8)(pa->b + (b_diff * part));
 		rtz_put_pixel_(&pk);
-		if (line != NULL) { *iter++ = pk; }
+		if (vertex_line_cache != NULL) { *iter++ = pk; }
 	}
-	return;
+	return (iter - vertex_line_cache);
 }
 
 void rtz_scanline_fill_(
 	const vertex_* long_line,
-	u16 long_line_distance,
-	const vertex_* line1_vertex1,
-	const vertex_* line1_vertex2,
-	const vertex_* line2_vertex1,
-	const vertex_* line2_vertex2
+	u16 long_line_len,
+	const vertex_* line1_p1,
+	const vertex_* line1_p2,
+	const vertex_* line2_p1,
+	const vertex_* line2_p2
 )
 {
-	i16 n = 1;
+	const vertex_* cur_line_p1 = line1_p1;
+	const vertex_* cur_line_p2 = line1_p2;
 
-	u16 steps  = rtz_distance_(line1_vertex1->x, line1_vertex2->x, line1_vertex1->y, line1_vertex2->y);
-	i16 v_diff = line1_vertex2->x - line1_vertex1->x;
-	i16 h_diff = line1_vertex2->y - line1_vertex1->y;
-	i16 z_diff = line1_vertex2->z - line1_vertex1->z;
-	i16 r_diff = line1_vertex2->r - line1_vertex1->r;
-	i16 g_diff = line1_vertex2->g - line1_vertex1->g;
-	i16 b_diff = line1_vertex2->b - line1_vertex1->b;
+	u16 cur_line_len  = rtz_distance_(cur_line_p1->x, cur_line_p2->x, cur_line_p1->y, cur_line_p2->y);
+	u16 cur_line_index = 0;
+	i16 x_diff = cur_line_p2->x - cur_line_p1->x;
+	i16 y_diff = cur_line_p2->y - cur_line_p1->y;
+	i16 z_diff = cur_line_p2->z - cur_line_p1->z;
+	i16 r_diff = cur_line_p2->r - cur_line_p1->r;
+	i16 g_diff = cur_line_p2->g - cur_line_p1->g;
+	i16 b_diff = cur_line_p2->b - cur_line_p1->b;
+	vertex_ cur_point = {0};
+	i16 last_y = 0;
 
-	i16 k = 0;
-	vertex_ pk = {
-		.x = (i16)(line1_vertex1->x + ((float)(v_diff * k) / steps)),
-		.y = (i16)(line1_vertex1->y + ((float)(h_diff * k) / steps)),
-		.z = (i16)(line1_vertex1->z + ((float)(z_diff * k) / steps)),
-		.r =  (u8)(line1_vertex1->r + ((float)(r_diff * k) / steps)),
-		.g =  (u8)(line1_vertex1->g + ((float)(g_diff * k) / steps)),
-		.b =  (u8)(line1_vertex1->b + ((float)(b_diff * k) / steps)),
-	};
-	for (; k < steps && n < long_line_distance; n++)
+	for (u16 long_line_index = 0; long_line_index < long_line_len; long_line_index++)
 	{
-		while (long_line[n].y != pk.y) {
-			if (h_diff == 0) {
-				n++;
+		if (long_line_index > 1 && long_line[long_line_index].y == long_line[long_line_index - 1].y)
+			continue;
+		do {
+
+			float part = fop_clamp((float)cur_line_index / cur_line_len, 0.f, 1.f);
+			cur_point.x = (i16)(cur_line_p1->x + (x_diff * part));
+			cur_point.y = (i16)(cur_line_p1->y + (y_diff * part));
+			cur_point.z = (i16)(cur_line_p1->z + (z_diff * part));
+			cur_point.r =  (u8)(cur_line_p1->r + (r_diff * part));
+			cur_point.g =  (u8)(cur_line_p1->g + (g_diff * part));
+			cur_point.b =  (u8)(cur_line_p1->b + (b_diff * part));
+			rtz_draw_line_(&long_line[long_line_index], &cur_point, NULL);
+
+			if (cur_line_index > 1 && cur_point.y == last_y) {
+				continue;
 			}
-			k++;
-			pk.y = (i16)(line1_vertex1->y + ((float)(h_diff * k) / steps));
+
+			last_y = cur_point.y;
 		}
-		pk.x = (i16)(line1_vertex1->x + ((float)(v_diff * k) / steps));
-		pk.z = (i16)(line1_vertex1->z + ((float)(z_diff * k) / steps));
-		pk.r =  (u8)(line1_vertex1->r + ((float)(r_diff * k) / steps));
-		pk.g =  (u8)(line1_vertex1->g + ((float)(g_diff * k) / steps));
-		pk.b =  (u8)(line1_vertex1->b + ((float)(b_diff * k) / steps));
-		rtz_draw_line_(&long_line[n], &pk, NULL);
-	}
-	n--;
-
-	steps  = rtz_distance_(line2_vertex1->x, line2_vertex2->x, line2_vertex1->y, line2_vertex2->y);
-	v_diff = line2_vertex2->x - line2_vertex1->x;
-	h_diff = line2_vertex2->y - line2_vertex1->y;
-	z_diff = line2_vertex2->z - line2_vertex1->z;
-	r_diff = line2_vertex2->r - line2_vertex1->r;
-	g_diff = line2_vertex2->g - line2_vertex1->g;
-	b_diff = line2_vertex2->b - line2_vertex1->b;
-
-	k = 0;
-	pk.x = (i16)(line2_vertex1->x + ((float)(v_diff * k) / steps));
-	pk.y = (i16)(line2_vertex1->y + ((float)(h_diff * k) / steps));
-	pk.z = (i16)(line2_vertex1->z + ((float)(z_diff * k) / steps));
-	pk.r =  (u8)(line2_vertex1->r + ((float)(r_diff * k) / steps));
-	pk.g =  (u8)(line2_vertex1->g + ((float)(g_diff * k) / steps));
-	pk.b =  (u8)(line2_vertex1->b + ((float)(b_diff * k) / steps));
-
-	for (; k < steps && n < long_line_distance; n++)
-	{
-		while (long_line[n].y != pk.y) {
-			if (h_diff == 0) {
-				n++;
-			}
-			k++;
-			pk.y = (i16)(line2_vertex1->y + ((float)(h_diff * k) / steps));
+		while (cur_point.y != long_line[long_line_index].y && cur_line_index++ <= cur_line_len);
+		if (cur_line_index > cur_line_len)
+		{
+			cur_line_p1 = line2_p1;
+			cur_line_p2 = line2_p2;
+			cur_line_len  = rtz_distance_(cur_line_p1->x, cur_line_p2->x, cur_line_p1->y, cur_line_p2->y);
+			cur_line_index = 0;
+			x_diff = cur_line_p2->x - cur_line_p1->x;
+			y_diff = cur_line_p2->y - cur_line_p1->y;
+			z_diff = cur_line_p2->z - cur_line_p1->z;
+			r_diff = cur_line_p2->r - cur_line_p1->r;
+			g_diff = cur_line_p2->g - cur_line_p1->g;
+			b_diff = cur_line_p2->b - cur_line_p1->b;
 		}
-		pk.x = (i16)(line2_vertex1->x + ((float)(v_diff * k) / steps));
-		pk.z = (i16)(line2_vertex1->z + ((float)(z_diff * k) / steps));
-		pk.r =  (u8)(line2_vertex1->r + ((float)(r_diff * k) / steps));
-		pk.g =  (u8)(line2_vertex1->g + ((float)(g_diff * k) / steps));
-		pk.b =  (u8)(line2_vertex1->b + ((float)(b_diff * k) / steps));
-		rtz_draw_line_(&long_line[n], &pk, NULL);
 	}
+
 	return;
 }
 
@@ -267,10 +250,9 @@ void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const
 			return;
 		}
 
-		u16 long_line_distance = rtz_distance_(p1->x, p2->x, p1->y, p2->y);
-		vertex_* long_line_buf = malloc(sizeof(vertex_) * (long_line_distance + 1));
-		rtz_draw_line_(p1, p2, long_line_buf);
-		rtz_scanline_fill_(long_line_buf, long_line_distance, p1, p3, p3, p2);
+		vertex_* long_line_buf = malloc(sizeof(vertex_) * (rtz_distance_(p1->x, p2->x, p1->y, p2->y) + 1));
+		u16 long_line_len = rtz_draw_line_(p1, p2, long_line_buf);
+		rtz_scanline_fill_(long_line_buf, long_line_len, p1, p3, p3, p2);
 		free(long_line_buf);
 	}
 	return;
