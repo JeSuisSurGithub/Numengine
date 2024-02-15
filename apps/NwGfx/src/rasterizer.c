@@ -69,23 +69,17 @@ i16 rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by)
 	return roundf(sqrtf(powf(ax - bx, 2) + powf(ay - by, 2)));
 }
 
-u16 rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb, ss_vertex* vertex_line_cache)
+void rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb)
 {
-	ss_vertex* iter = vertex_line_cache;
 	i16 steps = rtz_distance_(pa->x, pb->x, pa->y, pb->y);
 	if (steps == 0) {
 		rtz_put_pixel_(pa);
-		if (vertex_line_cache != NULL) { *iter++ = *pa; }
-		return (iter - vertex_line_cache);
+		return;
 	}
 	if (steps == 1) {
 		rtz_put_pixel_(pa);
 		rtz_put_pixel_(pb);
-		if (vertex_line_cache != NULL) {
-			*iter++ = *pa;
-			*iter++ = *pb;
-		}
-		return (iter - vertex_line_cache);
+		return;
 	}
 
 	i16 x_diff = pb->x - pa->x;
@@ -106,73 +100,111 @@ u16 rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb, ss_vertex* vertex_l
 		pk.g =  (u8)(pa->g + (g_diff * part));
 		pk.b =  (u8)(pa->b + (b_diff * part));
 		rtz_put_pixel_(&pk);
-		if (vertex_line_cache != NULL) { *iter++ = pk; }
 	}
-	return (iter - vertex_line_cache);
+	return;
 }
 
-void rtz_scanline_fill_(
-	const ss_vertex* long_line,
-	u16 long_line_len,
-	const ss_vertex* line1_p1,
-	const ss_vertex* line1_p2,
-	const ss_vertex* line2_p1,
-	const ss_vertex* line2_p2
-)
+void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_vertex* pc)
 {
-	const ss_vertex* cur_line_p1 = line1_p1;
-	const ss_vertex* cur_line_p2 = line1_p2;
+	i16 ab_delta_x = pb->x - pa->x;
+	i16 bc_delta_x = pc->x - pb->x;
+	i16 ca_delta_x = pa->x - pc->x;
 
-	i16 cur_line_len  = rtz_distance_(cur_line_p1->x, cur_line_p2->x, cur_line_p1->y, cur_line_p2->y);
-	i16 cur_line_index = 0;
+	i16 ab_delta_y = pb->y - pa->y;
+	i16 bc_delta_y = pc->y - pb->y;
+	i16 ca_delta_y = pa->y - pc->y;
 
-	i16 x_diff = cur_line_p2->x - cur_line_p1->x;
-	i16 y_diff = cur_line_p2->y - cur_line_p1->y;
-	i16 z_diff = cur_line_p2->z - cur_line_p1->z;
-	i16 r_diff = cur_line_p2->r - cur_line_p1->r;
-	i16 g_diff = cur_line_p2->g - cur_line_p1->g;
-	i16 b_diff = cur_line_p2->b - cur_line_p1->b;
-	ss_vertex cur_point = {0};
+	i16 ab_delta_z = pb->z - pa->z;
+	i16 bc_delta_z = pc->z - pb->z;
+	i16 ca_delta_z = pa->z - pc->z;
 
-	for (u16 long_line_index = 0; long_line_index < long_line_len; long_line_index++)
+	i16 ab_delta_r = pb->r - pa->r;
+	i16 bc_delta_r = pc->r - pb->r;
+	i16 ca_delta_r = pa->r - pc->r;
+
+	i16 ab_delta_g = pb->g - pa->g;
+	i16 bc_delta_g = pc->g - pb->g;
+	i16 ca_delta_g = pa->g - pc->g;
+
+	i16 ab_delta_b = pb->b - pa->b;
+	i16 bc_delta_b = pc->b - pb->b;
+	i16 ca_delta_b = pa->b - pc->b;
+
+	ss_vertex vertex_ab = {0};
+	ss_vertex vertex_bc = {0};
+	ss_vertex vertex_ca = {0};
+
+	u16 min_y = 0;
+	u16 max_y = RENDER_HEIGHT;
+
+	if (pa->y < pb->y) {
+        min_y = pa->y;
+        max_y = pb->y;
+    } else {
+        min_y = pb->y;
+        max_y = pa->y;
+    }
+
+    if (pc->y < min_y) {
+        min_y = pc->y;
+    } else if (pc->y > max_y) {
+        max_y = pc->y;
+    }
+
+	for (u16 y = min_y; y < max_y; y++)
 	{
-		// Skip if next one is on the same line
-		if ((long_line_index + 1) < long_line_len && long_line[long_line_index].y == long_line[long_line_index + 1].y)
-			continue;
+		// "reverse interpolation", find the percentage at which we would get to Y along the lines AB, BC and CA
+		float part_ab = (float)(y - pa->y) / ab_delta_y;
+		float part_bc = (float)(y - pb->y) / bc_delta_y;
+		float part_ca = (float)(y - pc->y) / ca_delta_y;
 
-		// Interpolate until aligns
-		do {
-			float part = fop_clamp((float)cur_line_index / cur_line_len, -1.f, 1.f);
-			cur_point.x = (i16)(cur_line_p1->x + (x_diff * part));
-			cur_point.y = (i16)(cur_line_p1->y + (y_diff * part));
-			cur_point.z = (i16)(cur_line_p1->z + (z_diff * part));
-			cur_point.r =  (u8)(cur_line_p1->r + (r_diff * part));
-			cur_point.g =  (u8)(cur_line_p1->g + (g_diff * part));
-			cur_point.b =  (u8)(cur_line_p1->b + (b_diff * part));
+		bool intersect_ab = (0.f <= part_ab && part_ab <= 1.f);
+		bool intersect_bc = (0.f <= part_bc && part_bc <= 1.f);
+		bool intersect_ca = (0.f <= part_ca && part_ca <= 1.f);
+
+		if (intersect_ab) {
+			vertex_ab = (ss_vertex){
+				.y = y,
+				.x = (pa->x + ab_delta_x * part_ab),
+				.z = (pa->z + ab_delta_z * part_ab),
+				.r = (pa->r + ab_delta_r * part_ab),
+				.g = (pa->g + ab_delta_g * part_ab),
+				.b = (pa->b + ab_delta_b * part_ab),
+			};
 		}
-		while (cur_line_index++ <= cur_line_len && cur_point.y != long_line[long_line_index].y);
 
-		rtz_draw_line_(&long_line[long_line_index], &cur_point, NULL);
+		if (intersect_bc) {
+			vertex_bc = (ss_vertex){
+				.y = y,
+				.x = pb->x + bc_delta_x * part_bc,
+				.z = pb->z + bc_delta_z * part_bc,
+				.r = pb->r + bc_delta_r * part_bc,
+				.g = pb->g + bc_delta_g * part_bc,
+				.b = pb->b + bc_delta_b * part_bc,
+			};
+		}
 
-		// Go next edge
-		if (cur_line_index > cur_line_len)
-		{
-			cur_line_p1 = line2_p1;
-			cur_line_p2 = line2_p2;
+		if (intersect_ca) {
+			vertex_ca = (ss_vertex){
+				.y = y,
+				.x = pc->x + ca_delta_x * part_ca,
+				.z = pc->z + ca_delta_z * part_ca,
+				.r = pc->r + ca_delta_r * part_ca,
+				.g = pc->g + ca_delta_g * part_ca,
+				.b = pc->b + ca_delta_b * part_ca,
+			};
+		}
 
-			cur_line_len  = rtz_distance_(cur_line_p1->x, cur_line_p2->x, cur_line_p1->y, cur_line_p2->y);
-			cur_line_index = 0;
-
-			x_diff = cur_line_p2->x - cur_line_p1->x;
-			y_diff = cur_line_p2->y - cur_line_p1->y;
-			z_diff = cur_line_p2->z - cur_line_p1->z;
-			r_diff = cur_line_p2->r - cur_line_p1->r;
-			g_diff = cur_line_p2->g - cur_line_p1->g;
-			b_diff = cur_line_p2->b - cur_line_p1->b;
+		if (intersect_ab && intersect_bc) {
+			rtz_draw_line_(&vertex_ab, &vertex_bc);
+		}
+		if (intersect_bc && intersect_ca) {
+			rtz_draw_line_(&vertex_bc, &vertex_ca);
+		}
+		if (intersect_ca && intersect_ab) {
+			rtz_draw_line_(&vertex_ca, &vertex_ab);
 		}
 	}
-
-	return;
 }
 
 ss_vertex rtz_ndc_to_viewport_(const ndc_vertex* p)
@@ -212,49 +244,12 @@ void rtz_draw_triangle(const ndc_vertex* pa_ndc, const ndc_vertex* pb_ndc, const
 	const ss_vertex pc = rtz_ndc_to_viewport_(pc_ndc);
 
 	if (wireframe) {
-		rtz_draw_line_(&pa, &pb, NULL);
-		rtz_draw_line_(&pb, &pc, NULL);
-		rtz_draw_line_(&pc, &pa, NULL);
+		rtz_draw_line_(&pa, &pb);
+		rtz_draw_line_(&pb, &pc);
+		rtz_draw_line_(&pc, &pa);
 	}
 	else {
-		// "Long" Line, line with the biggest delta Y
-		u16 ab_delta_y = abs(pa.y - pb.y);
-		u16 bc_delta_y = abs(pb.y - pc.y);
-		u16 ca_delta_y = abs(pc.y - pa.y);
-		bool ab_longer_bc = ab_delta_y > bc_delta_y;
-		bool bc_longer_ca = bc_delta_y > ca_delta_y;
-		bool ca_longer_ab = ca_delta_y > ab_delta_y;
-		bool ab_longest = ab_longer_bc && !ca_longer_ab;
-		bool bc_longest = bc_longer_ca && !ab_longer_bc;
-		bool ca_longest = ca_longer_ab && !bc_longer_ca;
-
-		const ss_vertex* p1 = NULL;
-		const ss_vertex* p2 = NULL;
-		const ss_vertex* p3 = NULL;
-
-		if (ab_longest) {
-			p1 = &pa;
-			p2 = &pb;
-			p3 = &pc;
-		}
-		else if (bc_longest) {
-			p1 = &pb;
-			p2 = &pc;
-			p3 = &pa;
-		}
-		else if (ca_longest) {
-			p1 = &pc;
-			p2 = &pa;
-			p3 = &pb;
-		}
-		else {
-			return;
-		}
-
-		ss_vertex* long_line_buf = malloc(sizeof(ss_vertex) * (rtz_distance_(p1->x, p2->x, p1->y, p2->y) + 1));
-		i16 long_line_len = rtz_draw_line_(p1, p2, long_line_buf);
-		rtz_scanline_fill_(long_line_buf, long_line_len, p1, p3, p3, p2);
-		free(long_line_buf);
+		rtz_bufferless_filler_(&pa, &pb, &pc);
 	}
 	return;
 }
