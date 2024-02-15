@@ -1,8 +1,5 @@
 #include "commons.h"
 
-#include <string.h>
-
-#define DEBUG_LOG_MAX_LEN 1024u
 char DEBUG_LOG[DEBUG_LOG_MAX_LEN] = {0};
 u16 DEBUG_LOG_LEN = 0;
 

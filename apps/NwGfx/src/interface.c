@@ -30,12 +30,6 @@ void ntf_print_text(const char* str, i16 x, i16 y)
 	return;
 }
 
-void ntf_vsync()
-{
-	int res = extapp_waitForVBlank();
-	return;
-}
-
 void ntf_draw_rect(i16 x, i16 y, u16 w, u16 h, u16 color)
 {
 	extapp_pushRectUniform(x, y, w, h, color);

@@ -5,20 +5,6 @@
 
 #include <stdio.h>
 
-void compute_centroid(const mesh_ndc* mesh, vec3 out)
-{
-	out = (vec3){0.f, 0.f, 0.f};
-	for (i16 k = 0; k < mesh->n_vertices; k++) {
-		out[0] += mesh->vertices[k].xyz[0];
-		out[1] += mesh->vertices[k].xyz[1];
-		out[2] += mesh->vertices[k].xyz[2];
-	}
-	out[0] = out[0] / mesh->n_vertices;
-	out[1] = out[1] / mesh->n_vertices;
-	out[2] = out[2] / mesh->n_vertices;
-	return;
-}
-
 int main(void)
 {
     ntf_wait_for_key_released();
@@ -31,9 +17,9 @@ int main(void)
 	u32 tick = 0;
 
 	// Cube
-	mesh_ndc model = rdr_init_mesh(8, 36);
-	memcpy(model.vertices,
-		&(vertex_ndc[8]){
+	mesh cube = rdr_init_mesh(8, 36);
+	memcpy(cube.vertices,
+		&(ndc_vertex[8]){
 			{.xyz = {-0.5, -0.5, -0.5} , .rgb = { 1.f, 0.f, 0.f}},
 			{.xyz = { 0.5, -0.5, -0.5} , .rgb = { 0.f, 1.f, 0.f}},
 			{.xyz = { 0.5,  0.5, -0.5} , .rgb = { 0.f, 0.f, 1.f}},
@@ -43,8 +29,8 @@ int main(void)
 			{.xyz = { 0.5,  0.5,  0.5} , .rgb = { 0.f, 0.f, 0.f}},
 			{.xyz = {-0.5,  0.5,  0.5} , .rgb = { 1.f, 1.f, 1.f}},
 		},
-		sizeof(vertex_ndc[8]));
-	memcpy(model.indices, &(u16[36])
+		sizeof(ndc_vertex[8]));
+	memcpy(cube.indices, &(u16[36])
 		{
 			0, 1, 2, 2, 3, 0,   // Front face
 			7, 6, 5, 5, 4, 7,   // Back face
@@ -55,8 +41,8 @@ int main(void)
 		},
 		sizeof(u16[36]));
 
-	mesh_ndc mesh1 = rdr_clone_mesh(&model);
-	mesh_ndc mesh2 = rdr_clone_mesh(&model);
+	mesh mesh1 = rdr_clone_mesh(&cube);
+	mesh mesh2 = rdr_clone_mesh(&cube);
 
 	u64 kb = ntf_kb_scan();
 
@@ -82,7 +68,7 @@ int main(void)
 		}
 
 		// Wireframe
-		if (kb & WIREFRAME) {
+		if (kb & MODE_WIREFRAME) {
 			if (cooldown > 0) {
 				--cooldown;
 			} else {
@@ -92,7 +78,7 @@ int main(void)
 		}
 
 		// Freeze
-		if (kb & FREEZE) {
+		if (kb & MODE_FREEZE) {
 			if (cooldown > 0) {
 				--cooldown;
 			} else {
@@ -117,84 +103,68 @@ int main(void)
 
 		vec3 forward = {0};
 		vec3 right = {0};
-		fop_forward(cam.pitch, cam.yaw, forward);
-		fop_right(cam.yaw, right);
+		fop_vec3_forward(forward, cam.pitch, cam.yaw);
+		fop_vec3_right(right, cam.yaw);
 
-		fop_vec3_normalize(forward);
-		fop_vec3_normalize(right);
+		fop_vec3_normalize(forward, forward);
+		fop_vec3_normalize(right, right);
 
 		// Movement
+		vec3 movement = {0};
 		if (kb & XYZ_FORWARD) {
-			vec3 movement = {0};
-			fop_vec3_mulf(forward, .5f, movement);
-			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
+			fop_vec3_mul_flt(movement, forward, .5f);
+			fop_vec3_1add2(cam.xyz, cam.xyz, movement);
 		}
 		if (kb & XYZ_BACK) {
-			vec3 movement = {0};
-			fop_vec3_mulf(forward, -.5f, movement);
-			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
+			fop_vec3_mul_flt(movement, forward, -.5f);
+			fop_vec3_1add2(cam.xyz, cam.xyz, movement);
 		}
 		if (kb & XYZ_RIGHT) {
-			vec3 movement = {0};
-			fop_vec3_mulf(right, -.5f, movement);
-			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
+			fop_vec3_mul_flt(movement, right, -.5f);
+			fop_vec3_1add2(cam.xyz, cam.xyz, movement);
 		}
 		if (kb & XYZ_LEFT) {
-			vec3 movement = {0};
-			fop_vec3_mulf(right, .5f, movement);
-			fop_vec3_1add2(cam.xyz, movement, cam.xyz);
+			fop_vec3_mul_flt(movement, right, .5f);
+			fop_vec3_1add2(cam.xyz, cam.xyz, movement);
 		}
 
 		// Update
 		if (!tick_freeze) ++tick;
 
-		for (i16 k = 0; k < model.n_vertices; k++)
+		mat4x4 mesh1_model_mat = {0};
+		mat4x4 mesh2_model_mat = {0};
+
+		mat4x4 yaw = {0};
+		mat4x4 pitch = {0};
+		mat4x4 roll = {0};
+		mat4x4 translate = {0};
+
+		fop_mat4_identity(mesh1_model_mat);
+		fop_mat4_yaw(yaw, fop_deg2rad(tick % 360) * 6.f);
+		fop_mat4_pitch(pitch, fop_deg2rad(-30.f));
+		fop_mat4_roll(roll, fop_deg2rad(30.f));
+		fop_mat4_translate(translate, (vec3){.5f,-.5f,20.f});
+
+		fop_mat4x4_1mul2(mesh1_model_mat, yaw, mesh1_model_mat);
+		fop_mat4x4_1mul2(mesh1_model_mat, pitch, mesh1_model_mat);
+		fop_mat4x4_1mul2(mesh1_model_mat, roll, mesh1_model_mat);
+		fop_mat4x4_1mul2(mesh1_model_mat, translate, mesh1_model_mat);
+
+		fop_mat4_identity(mesh2_model_mat);
+		fop_mat4_yaw(yaw, fop_deg2rad(tick % 360) * -6.f);
+		fop_mat4_pitch(pitch, fop_deg2rad(30.f));
+		fop_mat4_roll(roll, fop_deg2rad(-30.f));
+		fop_mat4_translate(translate, (vec3){-.5f,.5f,-20.f});
+
+		fop_mat4x4_1mul2(mesh2_model_mat, yaw, mesh2_model_mat);
+		fop_mat4x4_1mul2(mesh2_model_mat, pitch, mesh2_model_mat);
+		fop_mat4x4_1mul2(mesh2_model_mat, roll, mesh2_model_mat);
+		fop_mat4x4_1mul2(mesh2_model_mat, translate, mesh2_model_mat);
+
+		for (i16 k = 0; k < cube.n_vertices; k++)
 		{
-			vec3 mesh1_centroid = {0};
-			compute_centroid(&mesh1, mesh1_centroid);
-
-			vec3 mesh2_centroid = {0};
-			compute_centroid(&mesh2, mesh2_centroid);
-
-			fop_3d_roll_rotation(
-				fop_deg2rad(30.f),
-				mesh1_centroid,
-				mesh1.vertices[k].xyz,
-				mesh1.vertices[k].xyz);
-			fop_3d_pitch_rotation(
-				fop_deg2rad(-30.f),
-				mesh2_centroid,
-				mesh2.vertices[k].xyz,
-				mesh2.vertices[k].xyz);
-
-			fop_3d_yaw_rotation(
-				fop_deg2rad(tick % 360) * 6.f,
-				mesh1_centroid,
-				mesh1.vertices[k].xyz,
-				mesh1.vertices[k].xyz);
-			fop_3d_yaw_rotation(
-				fop_deg2rad(tick % 360) * -6.f,
-				mesh2_centroid,
-				mesh2.vertices[k].xyz,
-				mesh2.vertices[k].xyz);
-
-			fop_3d_translate(
-				(vec3){
-					.5f,
-					-.5f,
-					20.f,
-				},
-				mesh1.vertices[k].xyz,
-				mesh1.vertices[k].xyz);
-
-			fop_3d_translate(
-				(vec3){
-					-.5f,
-					.5f,
-					-20.f,
-				},
-				mesh2.vertices[k].xyz,
-				mesh2.vertices[k].xyz);
+			fop_mat4x4_mul_vec3(mesh1.vertices[k].xyz, mesh1_model_mat, mesh1.vertices[k].xyz);
+			fop_mat4x4_mul_vec3(mesh2.vertices[k].xyz, mesh2_model_mat, mesh2.vertices[k].xyz);
 		}
 
 		// Render
@@ -202,8 +172,8 @@ int main(void)
 		rdr_render_mesh(&mesh2, &cam, forward);
 
 		// Reset
-		rdr_copy_mesh(&mesh1, &model);
-		rdr_copy_mesh(&mesh2, &model);
+		rdr_copy_mesh(&mesh1, &cube);
+		rdr_copy_mesh(&mesh2, &cube);
 
 		// Swap framebuffers
 		rtz_flush_framebuf();
@@ -226,7 +196,7 @@ int main(void)
 	// Cleanup
 	rdr_free_mesh(mesh1);
 	rdr_free_mesh(mesh2);
-	rdr_free_mesh(model);
+	rdr_free_mesh(cube);
 	rtz_free();
 	return 0;
 }

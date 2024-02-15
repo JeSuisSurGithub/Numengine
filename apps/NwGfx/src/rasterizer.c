@@ -1,6 +1,6 @@
-#include "rasterizer.h"
 #include "floatops.h"
 #include "interface.h"
+#include "rasterizer.h"
 
 u16 RENDER_WIDTH   = LCD_WIDTH;
 u16 RENDER_HEIGHT  = LCD_HEIGHT;
@@ -52,7 +52,7 @@ u16 rtz_rgb888_to_rgb565_(u8 red, u8 green, u8 blue)
     return rgb565;
 }
 
-void rtz_put_pixel_(const vertex_* p)
+void rtz_put_pixel_(const ss_vertex* p)
 {
 	if (p->x < 0 || p->y < 0 || p->x >= RENDER_WIDTH || p->y >= RENDER_HEIGHT)
 		return;
@@ -69,9 +69,9 @@ i16 rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by)
 	return roundf(sqrtf(powf(ax - bx, 2) + powf(ay - by, 2)));
 }
 
-u16 rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* vertex_line_cache)
+u16 rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb, ss_vertex* vertex_line_cache)
 {
-	vertex_* iter = vertex_line_cache;
+	ss_vertex* iter = vertex_line_cache;
 	u16 steps = rtz_distance_(pa->x, pb->x, pa->y, pb->y);
 	if (steps == 0) {
 		rtz_put_pixel_(pa);
@@ -95,7 +95,7 @@ u16 rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* vertex_line_ca
 	i16 g_diff = pb->g - pa->g;
 	i16 b_diff = pb->b - pa->b;
 
-	vertex_ pk = {0};
+	ss_vertex pk = {0};
 	for (i16 k = 0; k <= steps; k++)
 	{
 		float part = (float)k / steps;
@@ -112,16 +112,16 @@ u16 rtz_draw_line_(const vertex_* pa, const vertex_* pb, vertex_* vertex_line_ca
 }
 
 void rtz_scanline_fill_(
-	const vertex_* long_line,
+	const ss_vertex* long_line,
 	u16 long_line_len,
-	const vertex_* line1_p1,
-	const vertex_* line1_p2,
-	const vertex_* line2_p1,
-	const vertex_* line2_p2
+	const ss_vertex* line1_p1,
+	const ss_vertex* line1_p2,
+	const ss_vertex* line2_p1,
+	const ss_vertex* line2_p2
 )
 {
-	const vertex_* cur_line_p1 = line1_p1;
-	const vertex_* cur_line_p2 = line1_p2;
+	const ss_vertex* cur_line_p1 = line1_p1;
+	const ss_vertex* cur_line_p2 = line1_p2;
 
 	u16 cur_line_len  = rtz_distance_(cur_line_p1->x, cur_line_p2->x, cur_line_p1->y, cur_line_p2->y);
 	u16 cur_line_index = 0;
@@ -131,8 +131,7 @@ void rtz_scanline_fill_(
 	i16 r_diff = cur_line_p2->r - cur_line_p1->r;
 	i16 g_diff = cur_line_p2->g - cur_line_p1->g;
 	i16 b_diff = cur_line_p2->b - cur_line_p1->b;
-	vertex_ cur_point = {0};
-	i16 last_y = 0;
+	ss_vertex cur_point = {0};
 
 	for (u16 long_line_index = 0; long_line_index < long_line_len; long_line_index++)
 	{
@@ -148,12 +147,6 @@ void rtz_scanline_fill_(
 			cur_point.g =  (u8)(cur_line_p1->g + (g_diff * part));
 			cur_point.b =  (u8)(cur_line_p1->b + (b_diff * part));
 			rtz_draw_line_(&long_line[long_line_index], &cur_point, NULL);
-
-			if (cur_line_index > 1 && cur_point.y == last_y) {
-				continue;
-			}
-
-			last_y = cur_point.y;
 		}
 		while (cur_point.y != long_line[long_line_index].y && cur_line_index++ <= cur_line_len);
 		if (cur_line_index > cur_line_len)
@@ -174,9 +167,9 @@ void rtz_scanline_fill_(
 	return;
 }
 
-vertex_ rtz_ndc_to_viewport_(const vertex_ndc* p)
+ss_vertex rtz_ndc_to_viewport_(const ndc_vertex* p)
 {
-	vertex_ np = {0};
+	ss_vertex np = {0};
 	np.x = (p->xyz[0] + 1) / 2 * RENDER_WIDTH;
 	np.y = (p->xyz[1] + 1) / 2 * RENDER_HEIGHT;
 	np.z = p->xyz[2] * INT16_MAX;
@@ -186,11 +179,11 @@ vertex_ rtz_ndc_to_viewport_(const vertex_ndc* p)
 	return np;
 }
 
-bool rtz_comp_point_(const vertex_ndc* left, const vertex_ndc* right) {
+bool rtz_comp_point_(const ndc_vertex* left, const ndc_vertex* right) {
 	return (left->xyz[0] == right->xyz[0]) && (left->xyz[1] == right->xyz[1]);
 }
 
-void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const vertex_ndc* pc_ndc, bool wireframe)
+void rtz_draw_triangle(const ndc_vertex* pa_ndc, const ndc_vertex* pb_ndc, const ndc_vertex* pc_ndc, bool wireframe)
 {
 	// Skip useless
 	if (rtz_comp_point_(pa_ndc, pb_ndc) || rtz_comp_point_(pb_ndc, pc_ndc) || rtz_comp_point_(pc_ndc, pa_ndc)) {
@@ -206,9 +199,9 @@ void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const
 		return;
 	}
 
-	const vertex_ pa = rtz_ndc_to_viewport_(pa_ndc);
-	const vertex_ pb = rtz_ndc_to_viewport_(pb_ndc);
-	const vertex_ pc = rtz_ndc_to_viewport_(pc_ndc);
+	const ss_vertex pa = rtz_ndc_to_viewport_(pa_ndc);
+	const ss_vertex pb = rtz_ndc_to_viewport_(pb_ndc);
+	const ss_vertex pc = rtz_ndc_to_viewport_(pc_ndc);
 
 	if (wireframe) {
 		rtz_draw_line_(&pa, &pb, NULL);
@@ -227,9 +220,9 @@ void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const
 		bool bc_longest = bc_longer_ca && !ab_longer_bc;
 		bool ca_longest = ca_longer_ab && !bc_longer_ca;
 
-		const vertex_* p1 = NULL;
-		const vertex_* p2 = NULL;
-		const vertex_* p3 = NULL;
+		const ss_vertex* p1 = NULL;
+		const ss_vertex* p2 = NULL;
+		const ss_vertex* p3 = NULL;
 
 		if (ab_longest) {
 			p1 = &pa;
@@ -250,7 +243,7 @@ void rtz_draw_triangle(const vertex_ndc* pa_ndc, const vertex_ndc* pb_ndc, const
 			return;
 		}
 
-		vertex_* long_line_buf = malloc(sizeof(vertex_) * (rtz_distance_(p1->x, p2->x, p1->y, p2->y) + 1));
+		ss_vertex* long_line_buf = malloc(sizeof(ss_vertex) * (rtz_distance_(p1->x, p2->x, p1->y, p2->y) + 1));
 		u16 long_line_len = rtz_draw_line_(p1, p2, long_line_buf);
 		rtz_scanline_fill_(long_line_buf, long_line_len, p1, p3, p3, p2);
 		free(long_line_buf);
