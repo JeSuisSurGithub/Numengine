@@ -46,7 +46,7 @@ int main(void)
 
 	u64 kb = ntf_kb_scan();
 
-	camera cam = { {0.f, 0.f, 0.f}, 75.f, 0.f, 0.f };
+	camera cam = { {0.f, 0.f, 0.f}, 45.f, 0.f, 0.f };
 
 	// In number of frames, 3 * 32ms = ~100ms
 	i16 cooldown_max = 3;
