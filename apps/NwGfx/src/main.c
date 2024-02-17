@@ -9,8 +9,8 @@ int main(void)
 {
     ntf_wait_for_key_released();
 
-	// 4x4 pixel tiles, 80x60 - half native resolution
-	rtz_init(4, 4);
+	// 4x3 pixel tiles, 80x80 resolution
+	rtz_init(4, 3);
 
 	// Movement
 	bool tick_freeze = false;
