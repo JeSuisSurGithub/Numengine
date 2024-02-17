@@ -1,3 +1,4 @@
+#include "commons.h"
 #include "floatops.h"
 #include "renderer.h"
 
@@ -64,61 +65,106 @@ mesh rdr_init_mesh(u16 n_vertices, u16 n_indices)
 	return mesh;
 }
 
-mesh rdr_clone_mesh(mesh* src)
+mesh rdr_clone_mesh(const mesh* src)
 {
 	mesh clone = rdr_init_mesh(src->n_vertices, src->n_indices);
 	rdr_copy_mesh(&clone, src);
 	return clone;
 }
 
-void rdr_copy_mesh(mesh* dst, mesh* src)
+void rdr_copy_mesh(mesh* dst, const mesh* src)
 {
 	memcpy(dst->vertices, src->vertices, sizeof(ndc_vertex) * dst->n_vertices);
 	memcpy(dst->indices, src->indices, sizeof(u16) * dst->n_indices);
 }
 
-void rdr_render_mesh(mesh* ws_mesh, const camera* cam, vec3 forward)
+bool rdr_comp_point_(const ndc_vertex* left, const ndc_vertex* right)
 {
+	return (left->xyz[0] == right->xyz[0]) && (left->xyz[1] == right->xyz[1]) && (left->xyz[2] == right->xyz[2]);
+}
+
+i16 rdr_filter_triangle_(const ndc_vertex* pa_ndc, const ndc_vertex* pb_ndc, const ndc_vertex* pc_ndc)
+{
+	// -1 Skip triangle
+	//  0 Keep triangle as is
+	if (rdr_comp_point_(pa_ndc, pb_ndc) ||
+		rdr_comp_point_(pb_ndc, pc_ndc) ||
+		rdr_comp_point_(pc_ndc, pa_ndc)) {
+		return -1;
+	}
+
+	bool pa_outside = (pa_ndc->xyz[2] < -1.f || pa_ndc->xyz[2] > 1.f);
+	bool pb_outside = (pb_ndc->xyz[2] < -1.f || pb_ndc->xyz[2] > 1.f);
+	bool pc_outside = (pc_ndc->xyz[2] < -1.f || pc_ndc->xyz[2] > 1.f);
+
+	u16 n_outside = pa_outside + pb_outside + pc_outside;
+
+	bool outside_left   = (pa_ndc->xyz[0] < -1.f && pb_ndc->xyz[0] < -1.f && pc_ndc->xyz[0] < -1.f);
+	bool outside_right  = (pa_ndc->xyz[0] >  1.f && pb_ndc->xyz[0] >  1.f && pc_ndc->xyz[0] >  1.f);
+	bool outside_top    = (pa_ndc->xyz[1] < -1.f && pb_ndc->xyz[1] < -1.f && pc_ndc->xyz[1] < -1.f);
+	bool outside_bottom = (pa_ndc->xyz[1] >  1.f && pb_ndc->xyz[1] >  1.f && pc_ndc->xyz[1] >  1.f);
+
+	if (n_outside == 0) {
+		return 0;
+	}
+	if (n_outside == 1 || n_outside == 2) {
+		return -1;
+	}
+	if ((n_outside == 3) && (outside_left ^ outside_right ^ outside_top ^ outside_bottom)) {
+		return -1;
+	}
+	return -1;
+}
+
+void rdr_render_mesh(const mesh* ws_mesh, const camera* cam, vec3 forward)
+{
+	mesh ndc_mesh = rdr_clone_mesh(ws_mesh);
+	u16* indices = ndc_mesh.indices;
+	ndc_vertex* vertices = ndc_mesh.vertices;
+
 	mat4x4 projection = {0};
-	fop_mat4_projection(projection, .1f, 1e+6f, cam->fov, 4.f / 3.f);
+	fop_mat4_projection(projection, 0.1f, 100.f, cam->fov, 4.f / 3.f);
 
 	mat4x4 view = {0};
 	fop_mat4_camera(view, cam->pitch, cam->yaw, cam->xyz);
 
-	u8 is_clip_space[256] = {0};
+	// Per vertex operations
+	for (i16 k = 0; k < ndc_mesh.n_vertices; k++) {
+		rdr_viewfrom_(
+			ndc_mesh.vertices[k].xyz,
+			view,
+			ndc_mesh.vertices[k].xyz);
+		rdr_project_(
+			ndc_mesh.vertices[k].xyz,
+			projection,
+			ndc_mesh.vertices[k].xyz);
+		float z = ndc_mesh.vertices[k].xyz[2];
+	}
 
-	mesh cs_mesh = rdr_clone_mesh(ws_mesh);
+	// Per triangle operations
+	for (i16 k = 0; k < ndc_mesh.n_indices; k += 3) {
+		bool is_cullable = rdr_is_cullable_(forward,
+			ws_mesh->vertices[ws_mesh->indices[k + 0]].xyz,
+			ws_mesh->vertices[ws_mesh->indices[k + 1]].xyz,
+			ws_mesh->vertices[ws_mesh->indices[k + 2]].xyz);
 
-	// Alias
-	u16* indices = ws_mesh->indices;
-	ndc_vertex* vertices = ws_mesh->vertices;
+		i16 filter_status = rdr_filter_triangle_(
+			&ndc_mesh.vertices[indices[k + 0]],
+			&ndc_mesh.vertices[indices[k + 1]],
+			&ndc_mesh.vertices[indices[k + 2]]);
 
-	for (i16 k = 0; k < ws_mesh->n_indices; k += 3) {
-		if (!rdr_is_cullable_(forward,
-			vertices[indices[k + 0]].xyz,
-			vertices[indices[k + 1]].xyz,
-			vertices[indices[k + 2]].xyz))
+		if (!is_cullable)
 		{
-			for (u64 i = 0; i < 3; i++) {
-				if (!is_clip_space[indices[k + i]]) {
-					rdr_viewfrom_(
-						cs_mesh.vertices[indices[k + i]].xyz,
-						view,
-						cs_mesh.vertices[indices[k + i]].xyz);
-					rdr_project_(
-						cs_mesh.vertices[indices[k + i]].xyz,
-						projection,
-						cs_mesh.vertices[indices[k + i]].xyz);
-					is_clip_space[indices[k + i]] = true;
-				}
+			if (filter_status == 0)
+			{
+				rtz_draw_triangle(
+					&ndc_mesh.vertices[indices[k + 0]],
+					&ndc_mesh.vertices[indices[k + 1]],
+					&ndc_mesh.vertices[indices[k + 2]], WIREFRAME);
 			}
-			rtz_draw_triangle(
-				&cs_mesh.vertices[indices[k + 0]],
-				&cs_mesh.vertices[indices[k + 1]],
-				&cs_mesh.vertices[indices[k + 2]], WIREFRAME);
 		}
 	}
-	rdr_free_mesh(cs_mesh);
+	rdr_free_mesh(ndc_mesh);
 }
 
 void rdr_free_mesh(mesh mesh)

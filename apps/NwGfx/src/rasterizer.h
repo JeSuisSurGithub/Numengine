@@ -13,7 +13,7 @@ typedef struct ss_vertex
 {
 	i16 x;
 	i16 y;
-	i16 z;
+	u8  z;
 	u8  r;
 	u8  g;
 	u8  b;
@@ -26,7 +26,7 @@ extern u16 SCALE_HEIGHT;
 
 // Heap framebuffer and depthbuffer
 extern u16* rtz_framebuffer;
-extern i16* rtz_depthbuffer;
+extern u8*  rtz_depthbuffer;
 
 void rtz_init(u16 horizontal_downscale, u16 vertical_downscale);
 void rtz_free();
@@ -38,7 +38,6 @@ i16  rtz_distance_(i16 ax, i16 bx, i16 ay, i16 by);
 void  rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb);
 void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_vertex* pc);
 ss_vertex rtz_ndc_to_viewport_(const ndc_vertex* p);
-bool rtz_comp_point_(const ndc_vertex* left, const ndc_vertex* right);
 void rtz_draw_triangle(
 	const ndc_vertex* pa_ndc,
 	const ndc_vertex* pb_ndc,

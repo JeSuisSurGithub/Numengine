@@ -175,8 +175,8 @@ void fop_mat4_projection(mat4x4 out, const float znear, const float zfar, const 
 	memcpy(out, (mat4x4){
 		{fov / ratio, 0.f, 0.f, 0.f},
 		{0.f, fov, 0.f, 0.f},
-		{0.f, 0.f, (zfar + znear) / (zfar - znear), 1.f},
-		{0.f, 0.f, (-zfar * znear) / (zfar - znear), 0.f},
+		{0.f, 0.f, (zfar + znear) / (zfar - znear), -(2.f * zfar * znear) / (zfar - znear)},
+		{0.f, 0.f, 1.f, 0.f},
 	}, sizeof(mat4x4));
 	return;
 }

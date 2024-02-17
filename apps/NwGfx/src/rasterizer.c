@@ -7,7 +7,7 @@ u16 RENDER_HEIGHT  = LCD_HEIGHT;
 u16 SCALE_WIDTH    = 1;
 u16 SCALE_HEIGHT   = 1;
 u16* rtz_framebuffer = NULL;
-i16* rtz_depthbuffer = NULL;
+u8*  rtz_depthbuffer = NULL;
 
 void rtz_init(u16 horizontal_downscale, u16 vertical_downscale)
 {
@@ -16,9 +16,9 @@ void rtz_init(u16 horizontal_downscale, u16 vertical_downscale)
 	SCALE_WIDTH  = horizontal_downscale;
 	SCALE_HEIGHT = vertical_downscale;
 	rtz_framebuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
-	rtz_depthbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(i16));
+	rtz_depthbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u8));
 	memset(rtz_framebuffer, 0, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
-	memset(rtz_depthbuffer, INT16_MAX, RENDER_WIDTH * RENDER_HEIGHT * sizeof(i16));
+	memset(rtz_depthbuffer, UINT8_MAX, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u8));
 	return;
 }
 
@@ -38,7 +38,7 @@ void rtz_flush_framebuf()
 			rtz_framebuffer[k]);
 	}
 	memset(rtz_framebuffer, 0, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u16));
-	memset(rtz_depthbuffer, INT16_MAX, RENDER_WIDTH * RENDER_HEIGHT * sizeof(i16));
+	memset(rtz_depthbuffer, UINT8_MAX, RENDER_WIDTH * RENDER_HEIGHT * sizeof(u8));
 	return;
 }
 
@@ -93,15 +93,52 @@ void rtz_draw_line_(const ss_vertex* pa, const ss_vertex* pb)
 	for (i16 k = 0; k <= steps; k++)
 	{
 		float part = fop_clamp((float)k / steps, -1.f, 1.f);
-		pk.x = (i16)(pa->x + (x_diff * part));
-		pk.y = (i16)(pa->y + (y_diff * part));
-		pk.z = (i16)(pa->z + (z_diff * part));
-		pk.r =  (u8)(pa->r + (r_diff * part));
-		pk.g =  (u8)(pa->g + (g_diff * part));
-		pk.b =  (u8)(pa->b + (b_diff * part));
+		pk.x = (i16)roundf(pa->x + (x_diff * part));
+		pk.y = (i16)roundf(pa->y + (y_diff * part));
+		pk.z =  (u8)roundf(pa->z + (z_diff * part));
+		pk.r =  (u8)roundf(pa->r + (r_diff * part));
+		pk.g =  (u8)roundf(pa->g + (g_diff * part));
+		pk.b =  (u8)roundf(pa->b + (b_diff * part));
 		rtz_put_pixel_(&pk);
 	}
 	return;
+}
+
+void rtz_clip_x(i16 y, ss_vertex* v1, ss_vertex* v2)
+{
+	if (v1->x < 0 || v1->x > RENDER_WIDTH || v2->x < 0 || v2->x > RENDER_WIDTH)
+	{
+		i16 delta_x = v2->x - v1->x;
+		i16 delta_z = v2->z - v1->z;
+		i16 delta_r = v2->r - v1->r;
+		i16 delta_g = v2->g - v1->g;
+		i16 delta_b = v2->b - v1->b;
+
+		i16 v1x = (v1->x < 0) ? 0 : v1->x;
+		v1x = (v1x > RENDER_WIDTH) ? RENDER_WIDTH : v1x;
+
+		float v1_part = fop_clamp((float)(v1x - v1->x) / delta_x, -1.f, 1.f);
+		(*v1) = (ss_vertex){
+			.y = y,
+			.x = v1x,
+			.z = (v1->z + delta_z * v1_part),
+			.r = (v1->r + delta_r * v1_part),
+			.g = (v1->g + delta_g * v1_part),
+			.b = (v1->b + delta_b * v1_part),
+		};
+
+		i16 v2x = (v2->x < 0) ? 0 : v2->x;
+		v2x = (v2x > RENDER_WIDTH) ? RENDER_WIDTH : v2x;
+		float v2_part = fop_clamp((float)(v2x - v2->x) / delta_x, -1.f, 1.f);
+		(*v2) = (ss_vertex){
+			.y = y,
+			.x = v2x,
+			.z = (v2->z + delta_z * v2_part),
+			.r = (v2->r + delta_r * v2_part),
+			.g = (v2->g + delta_g * v2_part),
+			.b = (v2->b + delta_b * v2_part),
+		};
+	}
 }
 
 void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_vertex* pc)
@@ -134,8 +171,8 @@ void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_v
 	ss_vertex vertex_bc = {0};
 	ss_vertex vertex_ca = {0};
 
-	u16 min_y = 0;
-	u16 max_y = RENDER_HEIGHT;
+	i16 min_y = 0;
+	i16 max_y = RENDER_HEIGHT;
 
 	if (pa->y < pb->y) {
         min_y = pa->y;
@@ -151,7 +188,10 @@ void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_v
         max_y = pc->y;
     }
 
-	for (u16 y = min_y; y < max_y; y++)
+	min_y = (min_y < 0) ? 0 : min_y;
+	max_y = (max_y > RENDER_HEIGHT) ? RENDER_HEIGHT : max_y;
+
+	for (i16 y = min_y; y <= max_y; y++)
 	{
 		// "reverse interpolation", find the percentage at which we would get to Y along the lines AB, BC and CA
 		float part_ab = (float)(y - pa->y) / ab_delta_y;
@@ -176,32 +216,35 @@ void rtz_bufferless_filler_(const ss_vertex* pa, const ss_vertex* pb, const ss_v
 		if (intersect_bc) {
 			vertex_bc = (ss_vertex){
 				.y = y,
-				.x = pb->x + bc_delta_x * part_bc,
-				.z = pb->z + bc_delta_z * part_bc,
-				.r = pb->r + bc_delta_r * part_bc,
-				.g = pb->g + bc_delta_g * part_bc,
-				.b = pb->b + bc_delta_b * part_bc,
+				.x = (pb->x + bc_delta_x * part_bc),
+				.z = (pb->z + bc_delta_z * part_bc),
+				.r = (pb->r + bc_delta_r * part_bc),
+				.g = (pb->g + bc_delta_g * part_bc),
+				.b = (pb->b + bc_delta_b * part_bc),
 			};
 		}
 
 		if (intersect_ca) {
 			vertex_ca = (ss_vertex){
 				.y = y,
-				.x = pc->x + ca_delta_x * part_ca,
-				.z = pc->z + ca_delta_z * part_ca,
-				.r = pc->r + ca_delta_r * part_ca,
-				.g = pc->g + ca_delta_g * part_ca,
-				.b = pc->b + ca_delta_b * part_ca,
+				.x = (pc->x + ca_delta_x * part_ca),
+				.z = (pc->z + ca_delta_z * part_ca),
+				.r = (pc->r + ca_delta_r * part_ca),
+				.g = (pc->g + ca_delta_g * part_ca),
+				.b = (pc->b + ca_delta_b * part_ca),
 			};
 		}
 
 		if (intersect_ab && intersect_bc) {
+			rtz_clip_x(y, &vertex_ab, &vertex_bc);
 			rtz_draw_line_(&vertex_ab, &vertex_bc);
 		}
 		if (intersect_bc && intersect_ca) {
+			rtz_clip_x(y, &vertex_bc, &vertex_ca);
 			rtz_draw_line_(&vertex_bc, &vertex_ca);
 		}
 		if (intersect_ca && intersect_ab) {
+			rtz_clip_x(y, &vertex_ca, &vertex_ab);
 			rtz_draw_line_(&vertex_ca, &vertex_ab);
 		}
 	}
@@ -212,33 +255,15 @@ ss_vertex rtz_ndc_to_viewport_(const ndc_vertex* p)
 	ss_vertex np = {0};
 	np.x = (p->xyz[0] + 1) / 2 * RENDER_WIDTH;
 	np.y = (p->xyz[1] + 1) / 2 * RENDER_HEIGHT;
-	np.z = p->xyz[2] * INT16_MAX;
+	np.z = (p->xyz[2] + 1) / 2 * UINT8_MAX;
 	np.r = p->rgb[0] * UINT8_MAX;
 	np.g = p->rgb[1] * UINT8_MAX;
 	np.b = p->rgb[2] * UINT8_MAX;
 	return np;
 }
 
-bool rtz_comp_point_(const ndc_vertex* left, const ndc_vertex* right) {
-	return (left->xyz[0] == right->xyz[0]) && (left->xyz[1] == right->xyz[1]);
-}
-
 void rtz_draw_triangle(const ndc_vertex* pa_ndc, const ndc_vertex* pb_ndc, const ndc_vertex* pc_ndc, bool wireframe)
 {
-	// Skip useless
-	if (rtz_comp_point_(pa_ndc, pb_ndc) || rtz_comp_point_(pb_ndc, pc_ndc) || rtz_comp_point_(pc_ndc, pa_ndc)) {
-		return;
-	}
-	if (pa_ndc->xyz[0] <= -1.f || pa_ndc->xyz[0] >= 1.f || pa_ndc->xyz[1] <= -1.f || pa_ndc->xyz[1] >= 1.f) {
-		return;
-	}
-	if (pb_ndc->xyz[0] <= -1.f || pb_ndc->xyz[0] >= 1.f || pb_ndc->xyz[1] <= -1.f || pb_ndc->xyz[1] >= 1.f) {
-		return;
-	}
-	if (pc_ndc->xyz[0] <= -1.f || pc_ndc->xyz[0] >= 1.f || pc_ndc->xyz[1] <= -1.f || pc_ndc->xyz[1] >= 1.f) {
-		return;
-	}
-
 	const ss_vertex pa = rtz_ndc_to_viewport_(pa_ndc);
 	const ss_vertex pb = rtz_ndc_to_viewport_(pb_ndc);
 	const ss_vertex pc = rtz_ndc_to_viewport_(pc_ndc);
