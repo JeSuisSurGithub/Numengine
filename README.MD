@@ -1,8 +1,11 @@
-# NwGfx
+# Numengine
 
-A Work in progress 3D rasterizer and engine written in C.
+A work in progress 3D rasterizer and engine written in C. And its derivative a 2D game engine written in C++.
+
+Other default bundled external apps were deleted.
 
 # Original README
+
 # Epsilon
 
 The base firmware image is a fork of https://github.com/numworks/epsilon including
