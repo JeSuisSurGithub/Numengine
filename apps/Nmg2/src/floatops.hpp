@@ -5,10 +5,19 @@
 
 #include <array>
 
-namespace nsp {
+namespace nmg {
     float deg2rad(float degree);
 
     constexpr float PI = 3.14159f;
+
+    class vec2 {
+        private:
+            std::array<float, 2> data;
+
+        public:
+            vec2(std::array<float, 2> init);
+            ~vec2();
+    };
 
     class mat3x3 {
         private:
@@ -19,6 +28,9 @@ namespace nsp {
             ~mat3x3();
 
             static mat3x3 identity();
+            static mat3x3 rotation(float theta, vec2 pivot = vec2({0, 0}));
+            static mat3x3 translation(vec2 translation);
+            static mat3x3 scale(vec2 scale);
     };
 }
 #endif /* FLOATOPS_HPP */

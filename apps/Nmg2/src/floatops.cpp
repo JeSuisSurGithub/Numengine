@@ -1,6 +1,6 @@
 #include "floatops.hpp"
 
-namespace nsp {
+namespace nmg {
 	float deg2rad(float degree)
 	{
 		return degree * (PI / 180.0f);
@@ -16,7 +16,7 @@ namespace nsp {
 
 	mat3x3 mat3x3::identity() {
         return mat3x3({{{1.0f, 0.0f, 0.0f},
-                       {0.0f, 1.0f, 0.0f},
-                       {0.0f, 0.0f, 1.0f}}});
+                        {0.0f, 1.0f, 0.0f},
+                        {0.0f, 0.0f, 1.0f}}});
     }
 }

@@ -5,7 +5,7 @@
 
 #include "../../../api/extapp_api.h"
 
-namespace nsp {
+namespace nmg {
 	typedef enum CONTROLS {
 	}CONTROLS;
 

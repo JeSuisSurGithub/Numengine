@@ -1,6 +1,6 @@
 #include "commons.hpp"
 
-namespace nsp {
+namespace nmg {
     // ARMv7-none-eabi doesn't support global ctor/dtor
     std::string* DEBUG_LOG = nullptr;
 

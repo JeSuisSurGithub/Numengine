@@ -4,13 +4,13 @@
 
 int main()
 {
-    auto mat = nsp::mat3x3::identity();
-    nsp::write_log("Hein!");
-    nsp::reset_log();
-    nsp::write_log("Whaouh!");
-    nsp::draw_rect(0, 0, 320, 240, 0xFFFF);
-    nsp::print_text(nsp::read_log().c_str(), 0, 0);
-    nsp::wait_for_key_released();
-    nsp::wait_for_key_pressed();
+    auto mat = nmg::mat3x3::identity();
+    nmg::write_log("Hein!");
+    nmg::reset_log();
+    nmg::write_log("Whaouh!");
+    nmg::draw_rect(0, 0, 320, 240, 0xFFFF);
+    nmg::print_text(nmg::read_log().c_str(), 0, 0);
+    nmg::wait_for_key_released();
+    nmg::wait_for_key_pressed();
     return 0;
 }

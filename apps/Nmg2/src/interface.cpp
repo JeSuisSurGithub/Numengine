@@ -1,7 +1,7 @@
 #include "interface.hpp"
 #include "commons.hpp"
 
-namespace nsp {
+namespace nmg {
 	void wait_for_key_pressed()
 	{
 		while (!extapp_scanKeyboard())
@@ -39,7 +39,7 @@ namespace nsp {
 }
 
 void extapp_main(void) {
-	nsp::DEBUG_LOG = new std::string;
+	nmg::DEBUG_LOG = new std::string;
 	int res = main();
-	delete nsp::DEBUG_LOG;
+	delete nmg::DEBUG_LOG;
 }
